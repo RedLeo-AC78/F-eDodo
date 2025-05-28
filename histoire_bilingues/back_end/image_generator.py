@@ -1,0 +1,1 @@
+# Génère les images par IA (DALL·E / Stable Diffusion)
