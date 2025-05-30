@@ -8,6 +8,22 @@ from dotenv import load_dotenv
 from groq import Groq
 from gtts import gTTS
 
+import re
+
+def clean_text_for_tts(text: str) -> str:
+    # 1) Supprime les # d’en-tête Markdown
+    text = re.sub(r'^#{1,6}\s*', '', text, flags=re.MULTILINE)
+    # 2) Retire *, **, ___, etc.
+    text = re.sub(r'(\*|_){1,3}', '', text)
+    # 3) Supprime les backticks
+    text = text.replace('`', '')
+    # 4) Transforme [texte](url) en “texte”
+    text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', text)
+    # 5) Enlève les balises HTML éventuelles
+    text = re.sub(r'<[^>]+>', '', text)
+    return text
+
+
 # Chargement des variables d'environnement
 load_dotenv()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -80,7 +96,10 @@ if st.session_state.story:
 
     if st.button("🎧 Écouter la narration"):
         with st.spinner("🔊 Synthèse vocale en cours..."):
-            st.session_state.audio = text_to_speech(st.session_state.story)
+        # 1) On nettoie le texte avant TTS
+            story_clean = clean_text_for_tts(st.session_state.story)
+        # 2) Puis on génère l’audio
+            st.session_state.audio = text_to_speech(story_clean)
         st.success("✔️ Audio prêt !")
 
     # 4) Lecture inline et téléchargement
