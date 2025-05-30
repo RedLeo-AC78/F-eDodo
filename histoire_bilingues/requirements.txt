@@ -3,3 +3,4 @@
 groq
 streamlit
 python-dotenv
+gTTS
