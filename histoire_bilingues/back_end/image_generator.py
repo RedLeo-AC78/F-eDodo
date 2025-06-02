@@ -24,7 +24,7 @@ def generate_image_from_prompt(prompt: str) -> Image.Image:
 
     return Image.open(BytesIO(response.content))
 
-def split_story_to_chunks(story, n=1):
+def split_story_to_chunks(story, n=2):
     """
     Découpe l’histoire en `n` parties approximativement égales pour illustrer chaque scène.
     """
@@ -35,10 +35,12 @@ def split_story_to_chunks(story, n=1):
 
 def generate_image_prompt(text: str) -> str:
     """
-    Transforme un passage d’histoire en prompt illustratif (style enfant, sans texte).
+    Transforme un passage d’histoire en prompt illustratif (style enfant, sans texte visible).
     """
     base_prompt = (
-        "Children's storybook illustration, soft pastel colors, cute style, "
-        "no text, no words, no logo, no watermark. Scene: "
+        "A beautiful children's storybook illustration with soft pastel colors and a cute, dreamy style. "
+        "Do not include any text, words, characters, numbers, letters, or symbols. "
+        "No captions, no speech bubbles, no writing, no logos, no watermarks. "
+        "Just a clean visual scene. Scene: "
     )
     return base_prompt + text.strip()[:200]

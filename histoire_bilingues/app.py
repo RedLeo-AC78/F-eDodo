@@ -157,7 +157,7 @@ if st.session_state.story:
     st.subheader("🎨 Illustrations")
     if not st.session_state.images:
         with st.spinner("🖼️ Génération des images..."):
-            parts = split_story_to_chunks(st.session_state.story, n=1)
+            parts = split_story_to_chunks(st.session_state.story, n=2)
             for idx, part in enumerate(parts):
                 try:
                     prompt = generate_image_prompt(part)
@@ -166,6 +166,8 @@ if st.session_state.story:
                 except Exception as e:
                     st.warning(f"Erreur image : {e}")
 
-    for scene_title, scene_text, img in st.session_state.images:
-        st.markdown(f"**{scene_title}** — _{scene_text[:80]}..._")
-        st.image(img, caption="Illustration IA", use_container_width=True)
+for scene_title, scene_text, img in st.session_state.images:
+    st.image(img, caption=scene_title, use_container_width=True)
+    st.markdown(f"**{scene_text}**")
+    st.markdown("---")
+

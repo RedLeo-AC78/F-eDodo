@@ -10,4 +10,4 @@ def generate_tts_audio(text: str, lang: str = "fr") -> BytesIO:
         mp3_fp.seek(0)
         return mp3_fp
     except Exception as e:
-        raise RuntimeError(f"Erreur lors de la génération audio : {e}")
+        raise RuntimeError(f"Erreur lors de la génération audio : {e}") 
