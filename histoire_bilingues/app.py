@@ -12,6 +12,7 @@ from back_end.image_generator import (
 )
 import re
 
+# Nettoyage du texte pour le TTS
 def clean_text_fortts(text: str) -> str:
     text = re.sub(r'^#{1,6}\s', '', text, flags=re.MULTILINE)
     text = re.sub(r'[*_]+', '', text)
@@ -20,15 +21,17 @@ def clean_text_fortts(text: str) -> str:
     text = re.sub(r'<[^>]+>', '', text)
     return text
 
+# Chargement des variables d'environnement
 load_dotenv()
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-def translate_fr_to_en(text: str) -> str:
+# Traduction via Google Translate API gratuite
+def translate_text(text: str, target_lang: str) -> str:
     url = "https://translate.googleapis.com/translate_a/single"
     params = {
         "client": "gtx",
         "sl": "fr",
-        "tl": "en",
+        "tl": target_lang,
         "dt": "t",
         "q": text
     }
@@ -38,6 +41,7 @@ def translate_fr_to_en(text: str) -> str:
     else:
         return "[Translation failed]"
 
+# TTS avec langue personnalisée
 def text_to_speech(text: str, lang: str = "fr") -> BytesIO:
     clean = clean_text_fortts(text)
     tts = gTTS(text=clean, lang=lang)
@@ -46,6 +50,7 @@ def text_to_speech(text: str, lang: str = "fr") -> BytesIO:
     buffer.seek(0)
     return buffer
 
+# Génération de l’histoire avec Mistral/Groq
 def generate_story(keywords: list[str]) -> str:
     prompt = (
         "Tu es un assistant conteur pour enfants. Rédige une histoire de 500 mots avec les mots-clés suivants : "
@@ -62,18 +67,34 @@ def generate_story(keywords: list[str]) -> str:
     )
     return response.choices[0].message.content
 
+# Configuration de la page Streamlit
 st.set_page_config(page_title="Générateur d’histoires IA", layout="wide")
 st.title("📖 Générateur d’histoires illustrées et bilingues")
 
+# Choix de langue avec drapeaux
+LANGUAGES = {
+    "🇫🇷 Français": "fr",
+    "🇬🇧 English": "en",
+    "🇪🇸 Español": "es",
+    "🇩🇪 Deutsch": "de",
+    "🇸🇦 العربية": "ar"
+}
+
+selected_lang_display = st.selectbox("🌍 Choisissez la langue de traduction :", list(LANGUAGES.keys()))
+selected_lang_code = LANGUAGES[selected_lang_display]
+
+# Initialisation session state
 if "story" not in st.session_state:
     st.session_state.story = None
-    st.session_state.story_en = None
+    st.session_state.story_translated = None
     st.session_state.audio_fr = None
-    st.session_state.audio_en = None
+    st.session_state.audio_trad = None
     st.session_state.images = []
 
+# Entrée utilisateur
 keywords_input = st.text_input("Mots-clés (ex. singe, Normandie, aventure) :")
 
+# Génération de l’histoire
 if st.button("🚀 Générer l’histoire"):
     keywords = [k.strip() for k in keywords_input.split(",") if k.strip()]
     if not keywords:
@@ -81,20 +102,24 @@ if st.button("🚀 Générer l’histoire"):
     else:
         with st.spinner("Génération de l’histoire..."):
             story_fr = generate_story(keywords)
-            story_en = translate_fr_to_en(story_fr)
+            if selected_lang_code == "fr":
+                story_translated = story_fr
+            else:
+                story_translated = translate_text(story_fr, target_lang=selected_lang_code)
             st.session_state.story = story_fr
-            st.session_state.story_en = story_en
+            st.session_state.story_translated = story_translated
             st.session_state.audio_fr = None
-            st.session_state.audio_en = None
+            st.session_state.audio_trad = None
             st.session_state.images = []
         st.success("✅ Histoire générée !")
 
+# Affichage de l’histoire et audio
 if st.session_state.story:
     st.subheader("📝 Histoire en français")
     st.write(st.session_state.story)
 
-    st.subheader("🌍 Version anglaise")
-    st.write(st.session_state.story_en)
+    st.subheader(f"🌍 Version en {selected_lang_display}")
+    st.write(st.session_state.story_translated)
 
     col1, col2 = st.columns(2)
     with col1:
@@ -112,16 +137,16 @@ if st.session_state.story:
             )
 
     with col2:
-        if st.button("🎿 Listen in English"):
-            with st.spinner("Creating English audio..."):
-                st.session_state.audio_en = text_to_speech(st.session_state.story_en, lang="en")
+        if st.button(f"🎿 Écouter en {selected_lang_display}"):
+            with st.spinner("Création audio..."):
+                st.session_state.audio_trad = text_to_speech(st.session_state.story_translated, lang=selected_lang_code)
 
-        if st.session_state.audio_en:
-            st.audio(st.session_state.audio_en, format="audio/mp3")
+        if st.session_state.audio_trad:
+            st.audio(st.session_state.audio_trad, format="audio/mp3")
             st.download_button(
-                label="⬇️ Download English audio",
-                data=st.session_state.audio_en,
-                file_name="story_en.mp3",
+                label=f"⬇️ Télécharger l’audio en {selected_lang_display}",
+                data=st.session_state.audio_trad,
+                file_name=f"histoire_{selected_lang_code}.mp3",
                 mime="audio/mp3"
             )
 
