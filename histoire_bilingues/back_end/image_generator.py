@@ -26,7 +26,7 @@ def generate_image_from_prompt(prompt: str) -> Image.Image:
 
     return Image.open(BytesIO(response.content))
 
-def split_story_to_chunks(story, n=5):
+def split_story_to_chunks(story, n=1):
     """
     Découpe l’histoire en `n` parties approximativement égales pour illustrer chaque scène.
     """

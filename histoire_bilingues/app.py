@@ -4,22 +4,12 @@ import requests
 import streamlit as st
 from dotenv import load_dotenv
 from groq import Groq
-from gtts import gTTS
+from back_end.tts_generator import generate_tts_audio
 from back_end.image_generator import (
     generate_image_from_prompt,
     split_story_to_chunks,
     generate_image_prompt
 )
-import re
-
-# Nettoyage du texte pour le TTS
-def clean_text_fortts(text: str) -> str:
-    text = re.sub(r'^#{1,6}\s', '', text, flags=re.MULTILINE)
-    text = re.sub(r'[*_]+', '', text)
-    text = text.replace('`', '')
-    text = re.sub(r'\[([^]]+)\]\([^)]+\)', r'\1', text)
-    text = re.sub(r'<[^>]+>', '', text)
-    return text
 
 # Chargement des variables d'environnement
 load_dotenv()
@@ -41,25 +31,18 @@ def translate_text(text: str, target_lang: str) -> str:
     else:
         return "[Translation failed]"
 
-# TTS avec langue personnalisée
-def text_to_speech(text: str, lang: str = "fr") -> BytesIO:
-    clean = clean_text_fortts(text)
-    tts = gTTS(text=clean, lang=lang)
-    buffer = BytesIO()
-    tts.write_to_fp(buffer)
-    buffer.seek(0)
-    return buffer
-
 # Génération de l’histoire avec Mistral/Groq
 def generate_story(keywords: list[str]) -> str:
     prompt = (
-        "Tu es un assistant conteur pour enfants. Rédige une histoire de 500 mots avec les mots-clés suivants : "
+        "Tu es un assistant conteur pour enfants âgés de 1 à 6 ans. "
+        "Rédige une histoire courte, simple et adaptée à leur âge (maximum 500 mots). "
+        "Utilise un vocabulaire facile à comprendre et inclus les mots-clés suivants : "
         + ", ".join(keywords)
     )
     response = client.chat.completions.create(
         model="llama3-70b-8192",
         messages=[
-            {"role": "system", "content": "Tu écris des histoires captivantes pour enfants."},
+            {"role": "system", "content": "Tu écris des histoires captivantes, éducatives et adaptées aux enfants entre 1 et 6 ans."},
             {"role": "user", "content": prompt}
         ],
         max_tokens=1000,
@@ -69,15 +52,15 @@ def generate_story(keywords: list[str]) -> str:
 
 # Configuration de la page Streamlit
 st.set_page_config(page_title="Générateur d’histoires IA", layout="wide")
-st.title("📖 Générateur d’histoires illustrées et bilingues")
+st.title("📖 Générateur d’histoires illustrées et bilingues pour enfants (1-6 ans)")
 
 # Choix de langue avec drapeaux
 LANGUAGES = {
-    "🇫🇷 Français": "fr",
-    "🇬🇧 English": "en",
-    "🇪🇸 Español": "es",
-    "🇩🇪 Deutsch": "de",
-    "🇸🇦 العربية": "ar"
+    "🇫🇷 Français (France)": "fr",
+    "🇬🇧 English (UK)": "en",
+    "🇪🇸 Español (España)": "es",
+    "🇩🇪 Deutsch (Deutschland)": "de",
+    "🇸🇦 العربية (العالم العربي)": "ar"
 }
 
 selected_lang_display = st.selectbox("🌍 Choisissez la langue de traduction :", list(LANGUAGES.keys()))
@@ -102,10 +85,7 @@ if st.button("🚀 Générer l’histoire"):
     else:
         with st.spinner("Génération de l’histoire..."):
             story_fr = generate_story(keywords)
-            if selected_lang_code == "fr":
-                story_translated = story_fr
-            else:
-                story_translated = translate_text(story_fr, target_lang=selected_lang_code)
+            story_translated = story_fr if selected_lang_code == "fr" else translate_text(story_fr, selected_lang_code)
             st.session_state.story = story_fr
             st.session_state.story_translated = story_translated
             st.session_state.audio_fr = None
@@ -125,7 +105,7 @@ if st.session_state.story:
     with col1:
         if st.button("🎿 Écouter en français"):
             with st.spinner("Création audio FR..."):
-                st.session_state.audio_fr = text_to_speech(st.session_state.story, lang="fr")
+                st.session_state.audio_fr = generate_tts_audio(st.session_state.story, lang="fr")
 
         if st.session_state.audio_fr:
             st.audio(st.session_state.audio_fr, format="audio/mp3")
@@ -139,7 +119,7 @@ if st.session_state.story:
     with col2:
         if st.button(f"🎿 Écouter en {selected_lang_display}"):
             with st.spinner("Création audio..."):
-                st.session_state.audio_trad = text_to_speech(st.session_state.story_translated, lang=selected_lang_code)
+                st.session_state.audio_trad = generate_tts_audio(st.session_state.story_translated, lang=selected_lang_code)
 
         if st.session_state.audio_trad:
             st.audio(st.session_state.audio_trad, format="audio/mp3")
@@ -153,7 +133,7 @@ if st.session_state.story:
     st.subheader("🖼️ Illustrations de l’histoire")
     if not st.session_state.images:
         with st.spinner("Création des illustrations IA via ClipDrop..."):
-            parts = split_story_to_chunks(st.session_state.story, n=5)
+            parts = split_story_to_chunks(st.session_state.story, n=1)
             for idx, part in enumerate(parts):
                 prompt = generate_image_prompt(part)
                 try:
