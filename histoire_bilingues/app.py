@@ -13,11 +13,11 @@ from back_end.image_generator import (
 import re
 
 def clean_text_fortts(text: str) -> str:
-    text = re.sub(r'^#{1,6}\s', '', text, flags=re.MULTILINE)  # Supprime titres Markdown
-    text = re.sub(r'[*_]+', '', text)                          # Supprime *, **, etc.
-    text = text.replace('`', '')                               # Supprime les backticks
-    text = re.sub(r'\[([^]]+)\]\([^)]+\)', r'\1', text)        # [texte](lien) => texte
-    text = re.sub(r'<[^>]+>', '', text)                        # Supprime HTML
+    text = re.sub(r'^#{1,6}\s', '', text, flags=re.MULTILINE)
+    text = re.sub(r'[*_]+', '', text)
+    text = text.replace('`', '')
+    text = re.sub(r'\[([^]]+)\]\([^)]+\)', r'\1', text)
+    text = re.sub(r'<[^>]+>', '', text)
     return text
 
 load_dotenv()
@@ -74,9 +74,6 @@ if "story" not in st.session_state:
 
 keywords_input = st.text_input("Mots-clés (ex. singe, Normandie, aventure) :")
 
-# Choix du moteur d’image
-image_provider = st.selectbox("🎨 Choisissez le moteur d’illustration IA :", ["huggingface", "clipdrop"])
-
 if st.button("🚀 Générer l’histoire"):
     keywords = [k.strip() for k in keywords_input.split(",") if k.strip()]
     if not keywords:
@@ -130,12 +127,12 @@ if st.session_state.story:
 
     st.subheader("🖼️ Illustrations de l’histoire")
     if not st.session_state.images:
-        with st.spinner(f"Création des illustrations IA via {image_provider}..."):
+        with st.spinner("Création des illustrations IA via ClipDrop..."):
             parts = split_story_to_chunks(st.session_state.story, n=5)
             for idx, part in enumerate(parts):
                 prompt = generate_image_prompt(part)
                 try:
-                    img = generate_image_from_prompt(prompt, provider=image_provider)
+                    img = generate_image_from_prompt(prompt)
                     st.session_state.images.append((f"Scène {idx+1}", part, img))
                 except Exception as e:
                     st.warning(f"Erreur image : {e}")
