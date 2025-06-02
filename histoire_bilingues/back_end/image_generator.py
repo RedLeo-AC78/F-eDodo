@@ -1,3 +1,5 @@
+# back_end/image_generator.py
+
 import requests
 import os
 from io import BytesIO
@@ -37,10 +39,15 @@ def generate_image_prompt(text: str) -> str:
     """
     Transforme un passage d’histoire en prompt illustratif (style enfant, sans texte visible).
     """
+    # On limite le texte à 200 caractères pour éviter de dépasser la taille max
+    extrait = text.strip()[:200]
+
+    # Prompt renforcé pour interdire absolument tout texte (lettres, chiffres, logos, etc.)
     base_prompt = (
         "A beautiful children's storybook illustration with soft pastel colors and a cute, dreamy style. "
-        "Do not include any text, words, characters, numbers, letters, or symbols. "
-        "No captions, no speech bubbles, no writing, no logos, no watermarks. "
-        "Just a clean visual scene. Scene: "
+        "Absolutely do NOT include any text, letters, numbers, symbols, captions, speech bubbles, logos, watermarks or signage. "
+        "The scene must be purely visual, with no typography or written elements. "
+        "Scene: "
     )
-    return base_prompt + text.strip()[:200]
+
+    return base_prompt + extrait

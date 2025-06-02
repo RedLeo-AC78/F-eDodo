@@ -1,5 +1,6 @@
 import os
 from io import BytesIO
+import base64
 import requests
 import streamlit as st
 from dotenv import load_dotenv
@@ -21,10 +22,13 @@ st.markdown("""
     .block-container {
         padding-top: 2rem;
         padding-bottom: 2rem;
+        display: flex;
+        justify-content: center;
     }
     h1, h2, h3 {
         color: #5D3FD3;
         font-family: 'Comic Sans MS', cursive, sans-serif;
+        text-align: center;
     }
     .stButton > button {
         background-color: #FFB347;
@@ -34,6 +38,8 @@ st.markdown("""
         border-radius: 12px;
         border: none;
         transition: background-color 0.3s;
+        display: block;
+        margin: 0 auto;
     }
     .stButton > button:hover {
         background-color: #FF9900;
@@ -63,6 +69,36 @@ st.markdown("""
     img {
         border-radius: 18px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .parchment-container {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+        margin-bottom: 2rem;
+    }
+    .parchment {
+        background-color: #f5f5dc;
+        color: #000000;
+        border: 10px solid #d2b48c;
+        border-radius: 20px;
+        padding: 20px;
+        max-width: 800px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        font-size: 18px;
+        line-height: 1.6;
+    }
+    .parchment img {
+        max-width: 100%;
+        height: auto;
+        display: block;
+        margin: 1rem auto;
+    }
+    .parchment p {
+        text-align: center;
+        margin-top: 1rem;
+    }
+    .parchment h3 {
+        margin-bottom: 1rem;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -115,10 +151,10 @@ def generate_story(keywords: list[str], lang_code: str) -> str:
     )
     return response.choices[0].message.content
 
-# Titre principal
+# Titre principal centré
 st.title("📖 Bienvenue dans FeedoDo : l’usine à histoires magiques !")
 
-# Choix langues
+# Choix langues centré
 col1, col2 = st.columns(2)
 with col1:
     lang_input_label = st.selectbox("🗣️ Langue de l’histoire :", list(LANGUAGES.keys()))
@@ -141,7 +177,7 @@ if "story" not in st.session_state:
     st.session_state.audio_output = None
     st.session_state.images = []
 
-# Mots-clés
+# Mots-clés centré
 keywords_input = st.text_input(f"📝 Mots-clés ({lang_input_label}) :")
 
 # Génération de l’histoire
@@ -160,48 +196,32 @@ if st.button("🚀 Générer l’histoire magique"):
             st.session_state.images = []
         st.success("✅ Histoire générée avec succès !")
 
-# Affichage
+# Affichage centré avec parchemin
 if st.session_state.story:
+    # Histoire originale
     st.header(f"📘 Histoire originale ({lang_input_label})")
-    st.write(st.session_state.story)
+    story_html = st.session_state.story.replace("\n", "<br>")
+    st.markdown(f"""
+        <div class="parchment-container">
+            <div class="parchment">
+                {story_html}
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
 
+    # Traduction si présente
     if show_translation and st.session_state.story_translated:
         st.header(f"📗 Version traduite ({lang_output_label})")
-        st.write(st.session_state.story_translated)
+        story_trad_html = st.session_state.story_translated.replace("\n", "<br>")
+        st.markdown(f"""
+            <div class="parchment-container">
+                <div class="parchment">
+                    {story_trad_html}
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
 
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown(f"### 🔊 Écoute en {lang_input_label}")
-        if st.button(f"▶️ Lancer l’audio ({lang_input_label})"):
-            with st.spinner("🎧 Génération audio..."):
-                st.session_state.audio_input = generate_tts_audio(st.session_state.story, lang=lang_input_code)
-        if st.session_state.audio_input:
-            st.audio(st.session_state.audio_input, format="audio/mp3")
-            st.download_button(
-                label=download_labels.get(lang_input_code, "⬇️ Download"),
-                data=st.session_state.audio_input,
-                file_name=f"histoire_{lang_input_code}.mp3",
-                mime="audio/mp3",
-                use_container_width=True
-            )
-
-    with col2:
-        if show_translation and st.session_state.story_translated:
-            st.markdown(f"### 🔊 Écoute en {lang_output_label}")
-            if st.button(f"▶️ Lancer l’audio ({lang_output_label})"):
-                with st.spinner("🎧 Génération audio..."):
-                    st.session_state.audio_output = generate_tts_audio(st.session_state.story_translated, lang=lang_output_code)
-            if st.session_state.audio_output:
-                st.audio(st.session_state.audio_output, format="audio/mp3")
-                st.download_button(
-                    label=download_labels.get(lang_output_code, "⬇️ Download"),
-                    data=st.session_state.audio_output,
-                    file_name=f"histoire_{lang_output_code}.mp3",
-                    mime="audio/mp3",
-                    use_container_width=True
-                )
-
-    # Génération et affichage des illustrations + texte dessous
+    # Génération et affichage des illustrations + texte dessous, au sein du parchemin
     st.header("🎨 Illustrations magiques de l’histoire")
     if not st.session_state.images:
         with st.spinner("🖼️ Création des images..."):
@@ -211,10 +231,24 @@ if st.session_state.story:
                     prompt = generate_image_prompt(part)
                     image = generate_image_from_prompt(prompt)
                     st.session_state.images.append((f"Scène {idx+1}", part, image))
+                except RuntimeError as e:
+                    st.warning(str(e))
                 except Exception as e:
-                    st.warning(f"Erreur image : {e}")
+                    st.warning(f"Erreur inattendue lors de la génération d'image : {e}")
 
     for scene_title, scene_text, img in st.session_state.images:
-        st.image(img, caption=scene_title, use_container_width=True)
-        st.markdown(f"**{scene_text}**")
-        st.markdown("---")
+        # Conversion de l'image en base64 pour l'affichage dans HTML
+        buffered = BytesIO()
+        img.save(buffered, format='PNG')
+        img_str = base64.b64encode(buffered.getvalue()).decode()
+        # Création du HTML centré dans le parchemin
+        html = f"""
+            <div class=\"parchment-container\"> 
+                <div class=\"parchment\"> 
+                    <h3>{scene_title}</h3>
+                    <img src=\"data:image/png;base64,{img_str}\" />
+                    <p>{scene_text}</p>
+                </div>
+            </div>
+        """
+        st.markdown(html, unsafe_allow_html=True)
