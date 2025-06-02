@@ -221,6 +221,38 @@ if st.session_state.story:
             </div>
         """, unsafe_allow_html=True)
 
+    # Boutons pour écouter l’audio
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown(f"### 🔊 Écoute en {lang_input_label}")
+        if st.button(f"▶️ Lancer l’audio ({lang_input_label})"):
+            with st.spinner("🎧 Génération audio..."):
+                st.session_state.audio_input = generate_tts_audio(st.session_state.story, lang=lang_input_code)
+        if st.session_state.audio_input:
+            st.audio(st.session_state.audio_input, format="audio/mp3")
+            st.download_button(
+                label=download_labels.get(lang_input_code, "⬇️ Download"),
+                data=st.session_state.audio_input,
+                file_name=f"histoire_{lang_input_code}.mp3",
+                mime="audio/mp3",
+                use_container_width=True
+            )
+    with col2:
+        if show_translation and st.session_state.story_translated:
+            st.markdown(f"### 🔊 Écoute en {lang_output_label}")
+            if st.button(f"▶️ Lancer l’audio ({lang_output_label})"):
+                with st.spinner("🎧 Génération audio..."):
+                    st.session_state.audio_output = generate_tts_audio(st.session_state.story_translated, lang=lang_output_code)
+            if st.session_state.audio_output:
+                st.audio(st.session_state.audio_output, format="audio/mp3")
+                st.download_button(
+                    label=download_labels.get(lang_output_code, "⬇️ Download"),
+                    data=st.session_state.audio_output,
+                    file_name=f"histoire_{lang_output_code}.mp3",
+                    mime="audio/mp3",
+                    use_container_width=True
+                )
+
     # Génération et affichage des illustrations + texte dessous, au sein du parchemin
     st.header("🎨 Illustrations magiques de l’histoire")
     if not st.session_state.images:
