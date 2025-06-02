@@ -35,6 +35,10 @@ def split_story_to_chunks(story, n=1):
 
 def generate_image_prompt(text: str) -> str:
     """
-    Transforme un passage d’histoire en prompt illustratif (style histoire pour enfants).
+    Transforme un passage d’histoire en prompt illustratif (style enfant, sans texte).
     """
-    return f"Storybook illustration for children: {text.strip()[:200]}"
+    base_prompt = (
+        "Children's storybook illustration, soft pastel colors, cute style, "
+        "no text, no words, no logo, no watermark. Scene: "
+    )
+    return base_prompt + text.strip()[:200]
