@@ -1,4 +1,3 @@
-# Génère les images par IA (ClipDrop uniquement)
 import requests
 import os
 from io import BytesIO
@@ -8,7 +7,6 @@ from dotenv import load_dotenv
 # Charger les variables d’environnement
 load_dotenv()
 
-# 🔐 Clé API ClipDrop
 CLIPDROP_API_KEY = os.getenv("CLIPDROP_API_KEY")
 
 def generate_image_from_prompt(prompt: str) -> Image.Image:
