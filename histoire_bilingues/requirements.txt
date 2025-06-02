@@ -1,0 +1,6 @@
+# Liste des dépendances Python
+
+groq
+streamlit
+python-dotenv
+gTTS

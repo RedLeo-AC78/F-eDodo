@@ -1,0 +1,1 @@
+# Traduit l’histoire en anglais (DeepL ou Google)
