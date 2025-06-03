@@ -39,10 +39,8 @@ def generate_image_prompt(text: str) -> str:
     """
     Transforme un passage d’histoire en prompt illustratif (style enfant, sans texte visible).
     """
-    # On limite le texte à 200 caractères pour éviter de dépasser la taille max
     extrait = text.strip()[:200]
 
-    # Prompt renforcé pour interdire absolument tout texte (lettres, chiffres, logos, etc.)
     base_prompt = (
         "A beautiful children's storybook illustration with soft pastel colors and a cute, dreamy style. "
         "Absolutely do NOT include any text, letters, numbers, symbols, captions, speech bubbles, logos, watermarks or signage. "

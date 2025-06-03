@@ -1,3 +1,5 @@
+# app.py
+
 import os
 from io import BytesIO
 import base64
@@ -15,7 +17,6 @@ from back_end.image_generator import (
 # -------------------------------------------------------------------
 # 1. LECTURE ET CONVERSION DE L'IMAGE DE FOND EN BASE64
 # -------------------------------------------------------------------
-# Indique ici le chemin vers ton image de fond (par ex. "background.png" dans le même dossier)
 BACKGROUND_IMAGE_PATH = "background.png"
 background_base64 = ""
 if os.path.exists(BACKGROUND_IMAGE_PATH):
@@ -28,81 +29,37 @@ if os.path.exists(BACKGROUND_IMAGE_PATH):
 # -------------------------------------------------------------------
 st.set_page_config(page_title="FeedoDo - Histoire magique", layout="wide")
 
-# Construction du CSS : si background_base64 n'est pas vide, on utilise l'image,
-# sinon on tombe sur une couleur unie (#FFF8F0).
-css_background = ""
-if background_base64:
-    css_background = f"""
-        body {{
-            background-image: url("data:image/png;base64,{background_base64}");
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-        }}
-    """
-else:
-    # Si l'image n'existe pas ou n'a pas pu être lue
-    css_background = """
-        body {
-            background-color: #FFF8F0;
-        }
-    """
-
 st.markdown(f"""
     <style>
-    {css_background}
+    /* ---------- STYLE GÉNÉRAL DU BACKGROUND ---------- */
+    body {{
+        background-color: #FFF8F0;  /* beige très clair si pas d'image */
+        background-image: url("data:image/png;base64,{background_base64}") !important;
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+    }}
 
+    /* ---------- CONTENEUR PRINCIPAL ---------- */
     .block-container {{
         padding-top: 2rem;
         padding-bottom: 2rem;
         display: flex;
-        justify-content: center;
+        flex-direction: column;
+        align-items: center;
+        max-width: 900px;
+        margin: auto;
     }}
+
+    /* ---------- TITRES : police Comic Sans MS, couleur violette ---------- */
     h1, h2, h3 {{
-        color: #5D3FD3;
         font-family: 'Comic Sans MS', cursive, sans-serif;
+        color: #5D3FD3;
         text-align: center;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
     }}
-    .stButton > button {{
-        background-color: #FFB347;
-        color: white;
-        font-size: 20px;
-        padding: 0.6em 1.5em;
-        border-radius: 12px;
-        border: none;
-        transition: background-color 0.3s;
-        display: block;
-        margin: 0 auto;
-    }}
-    .stButton > button:hover {{
-        background-color: #FF9900;
-    }}
-    .stTextInput > div > input {{
-        font-size: 20px;
-        background-color: #FFF2CC;
-        border-radius: 8px;
-    }}
-    .stSelectbox > div > div > div {{
-        font-size: 18px;
-    }}
-    .stCheckbox > label {{
-        font-size: 18px;
-    }}
-    .stAudio {{
-        margin-top: 0.5em;
-        margin-bottom: 1.5em;
-    }}
-    .stDownloadButton > button {{
-        background-color: #FF69B4;
-        color: white;
-        font-size: 18px;
-        padding: 0.5em 1em;
-        border-radius: 10px;
-    }}
-    img {{
-        border-radius: 18px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    }}
+
+    /* ---------- PARCHEMIN (CONTE) ---------- */
     .parchment-container {{
         display: flex;
         justify-content: center;
@@ -110,13 +67,13 @@ st.markdown(f"""
         margin-bottom: 2rem;
     }}
     .parchment {{
-        background-color: #f5f5dc;
-        color: #000000;
-        border: 10px solid #d2b48c;
+        background-color: #FDF0D5;          /* beige doux */
+        color: #2B2B2B;                     /* texte anthracite */
+        border: 8px solid #D2A679;         /* bord brun clair */
         border-radius: 20px;
-        padding: 20px;
+        padding: 20px 30px;
         max-width: 800px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        box-shadow: 0 6px 14px rgba(0,0,0,0.1);
         font-size: 18px;
         line-height: 1.6;
     }}
@@ -125,13 +82,140 @@ st.markdown(f"""
         height: auto;
         display: block;
         margin: 1rem auto;
+        border-radius: 12px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }}
+    .parchment h3 {{
+        margin-bottom: 0.8rem;
+        color: #5D3FD3;
+        font-family: 'Comic Sans MS', cursive, sans-serif;
     }}
     .parchment p {{
         text-align: center;
         margin-top: 1rem;
     }}
-    .parchment h3 {{
-        margin-bottom: 1rem;
+
+    /* ---------- BOUTONS (stButton) ---------- */
+    .stButton > button {{
+        font-family: 'Comic Sans MS', cursive, sans-serif;
+        background: linear-gradient(135deg, #FFD966 0%, #FFB6C1 100%); /* dégradé jaune → rose */
+        color: #FFFFFF;
+        font-size: 20px;
+        padding: 0.8em 1.8em;
+        border-radius: 20px;
+        border: 2px solid #FF8C00;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        transition: transform 0.2s, box-shadow 0.2s;
+        display: block;
+        margin: 1rem auto;
+    }}
+    .stButton > button:hover {{
+        transform: translateY(-2px);
+        box-shadow: 0 6px 14px rgba(0,0,0,0.2);
+        background: linear-gradient(135deg, #FFB347 0%, #FF69B4 100%);
+    }}
+
+    /* ---------- CHAMP DE SAISIE (stTextInput) ---------- */
+    .stTextInput > div > input {{
+        font-size: 20px;
+        background-color: #FFFFFF;    /* fond blanc pour mieux voir le texte */
+        border: 1px solid #FFD966;    /* bordure pastel légère */
+        border-radius: 8px;
+        padding: 0.6em 1em;
+        color: #333333;
+    }}
+    .stTextInput > label {{
+        font-family: 'Comic Sans MS', cursive, sans-serif;
+        font-size: 18px;
+        color: #5D3FD3;
+    }}
+
+    /* ---------- SELECTBOX (menu déroulant) ---------- */
+    .stSelectbox > div > div > div {{
+        font-size: 18px;
+        background-color: #FFFFFF;    /* fond blanc */
+        border: 1px solid #FFD966;    /* bordure pastel légère */
+        border-radius: 8px;
+        padding: 0.5em 0.8em;
+        color: #333333;
+        height: 2.5em;                /* hauteur fixe pour centrer verticalement */
+        display: flex;
+        align-items: center;          /* aligne le texte verticalement */
+    }}
+    .stSelectbox > label {{
+        font-family: 'Comic Sans MS', cursive, sans-serif;
+        font-size: 18px;
+        color: #5D3FD3;
+        margin-bottom: 0.3em;
+    }}
+    .stSelectbox > div > div > div svg {{
+        fill: #5D3FD3 !important;     /* couleur du petit chevron */
+    }}
+
+    /* ---------- CHECKBOX ---------- */
+    .stCheckbox > label {{
+        font-family: 'Comic Sans MS', cursive, sans-serif;
+        font-size: 18px;
+        color: #5D3FD3;
+        margin-top: 0.4em;            /* décale un peu vers le bas pour aligner avec select */
+    }}
+
+    /* ---------- BOUTON DE TÉLÉCHARGEMENT AUDIO ---------- */
+    .stDownloadButton > button {{
+        font-family: 'Comic Sans MS', cursive, sans-serif;
+        background: linear-gradient(135deg, #87CEFA 0%, #98FB98 100%); /* bleu ciel → vert */
+        color: #FFFFFF;
+        font-size: 18px;
+        padding: 0.6em 1.2em;
+        border-radius: 16px;
+        border: 2px solid #00BFFF;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        transition: transform 0.2s;
+        margin-top: 0.5em;
+    }}
+    .stDownloadButton > button:hover {{
+        transform: translateY(-1px);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        background: linear-gradient(135deg, #1E90FF 0%, #00FA9A 100%);
+    }}
+
+    /* ---------- LECTEUR AUDIO ---------- */
+    .stAudio {{
+        margin-top: 0.5em;
+        margin-bottom: 1.5em;
+        border: 2px solid #FFD966;
+        border-radius: 12px;
+        background-color: #FFF8DC;
+    }}
+
+    /* ---------- IMAGES GÉNÉRÉES ---------- */
+    img {{
+        border-radius: 16px !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+    }}
+
+    /* ---------- RÉPONSIVE ---------- */
+    @media (max-width: 768px) {{
+        .block-container {{
+            padding: 1rem;
+        }}
+        .parchment {{
+            padding: 15px 20px;
+            font-size: 16px;
+        }}
+        .stButton > button,
+        .stDownloadButton > button {{
+            font-size: 18px;
+            padding: 0.7em 1.4em;
+        }}
+        .stTextInput > div > input {{
+            font-size: 18px;
+        }}
+        .stSelectbox > div > div > div {{
+            font-size: 16px;
+            height: 2.2em;
+            padding: 0.4em 0.6em;
+        }}
     }}
     </style>
 """, unsafe_allow_html=True)
@@ -179,7 +263,7 @@ def generate_story(keywords: list[str], lang_code: str) -> str:
     prompts = {
         "fr": "Tu es un assistant conteur pour enfants âgés de 1 à 6 ans. Rédige une histoire courte et adaptée avec ces mots-clés : ",
         "en": "You are a storytelling assistant for children aged 1 to 6. Write a short story using the following keywords: ",
-        "es": "Eres un asistente que cuenta cuentos pour niños de 1 a 6 años. Escribe una historia corta con estas palabras clave: "
+        "es": "Eres un asistente que cuenta cuentos para niños de 1 a 6 años. Escribe una historia corta con estas palabras clave: "
     }
     prompt = prompts[lang_code] + ", ".join(keywords)
     response = client.chat.completions.create(
@@ -194,34 +278,27 @@ def generate_story(keywords: list[str], lang_code: str) -> str:
 # 6. AFFICHAGE DE L’INTERFACE STREAMLIT
 # -------------------------------------------------------------------
 
-# Titre principal centré
 st.title("📖 Bienvenue dans FeedoDo : l’usine à histoires magiques !")
 
-# Choix de la langue
-col1, col2 = st.columns(2)
-with col1:
-    lang_input_label = st.selectbox("🗣️ Langue de l’histoire :", list(LANGUAGES.keys()))
-    lang_input_code = LANGUAGES[lang_input_label]
+# Choix de la langue et option de traduction
+show_translation = st.checkbox("🧚‍♀️ Traduire dans une autre langue ?")
 
-with col2:
-    show_translation = st.checkbox("🧚‍♀️ Traduire dans une autre langue ?")
-    if show_translation:
+if show_translation:
+    col1, col2 = st.columns(2)
+    with col1:
+        lang_input_label = st.selectbox("🗣️ Langue de l’histoire :", list(LANGUAGES.keys()))
+        lang_input_code = LANGUAGES[lang_input_label]
+    with col2:
         lang_output_label = st.selectbox(
             "🌍 Langue de traduction :",
-            [label for label in LANGUAGES if LANGUAGES[label] != lang_input_code]
+            [lbl for lbl in LANGUAGES if LANGUAGES[lbl] != lang_input_code]
         )
         lang_output_code = LANGUAGES[lang_output_label]
-    else:
-        lang_output_label = None
-        lang_output_code = None
-
-# Initialisation de la session
-if "story" not in st.session_state:
-    st.session_state.story = None
-    st.session_state.story_translated = None
-    st.session_state.audio_input = None
-    st.session_state.audio_output = None
-    st.session_state.images = []
+else:
+    lang_input_label = st.selectbox("🗣️ Langue de l’histoire :", list(LANGUAGES.keys()))
+    lang_input_code = LANGUAGES[lang_input_label]
+    lang_output_label = None
+    lang_output_code = None
 
 # Saisie des mots-clés
 keywords_input = st.text_input(f"📝 Mots-clés ({lang_input_label}) :")
@@ -233,104 +310,94 @@ if st.button("🚀 Générer l’histoire magique"):
         st.error("⚠️ Veuillez entrer au moins un mot-clé.")
     else:
         with st.spinner("🧠 Création de l’histoire magique en cours..."):
+            # Génération de l’histoire complète, dans la langue choisie
             story = generate_story(keywords, lang_input_code)
-            story_trad = translate_text(story, lang_input_code, lang_output_code) if show_translation else None
+            # Traduction complète (si activée)
+            if show_translation:
+                story_translated = translate_text(story, lang_input_code, lang_output_code)
+            else:
+                story_translated = None
+
+            # Stockage dans la session
             st.session_state.story = story
-            st.session_state.story_translated = story_trad
-            st.session_state.audio_input = None
-            st.session_state.audio_output = None
+            st.session_state.story_translated = story_translated
+            st.session_state.audio_original = None
+            st.session_state.audio_translated = None
             st.session_state.images = []
         st.success("✅ Histoire générée avec succès !")
 
-# Affichage du résultat
-if st.session_state.story:
-    # Histoire originale
-    st.header(f"📘 Histoire originale ({lang_input_label})")
-    story_html = st.session_state.story.replace("\n", "<br>")
-    st.markdown(f"""
-        <div class="parchment-container">
-            <div class="parchment">
-                {story_html}
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
+# Une fois l’histoire générée, on affiche les illustrations + description, puis les audios complets
+if "story" in st.session_state and st.session_state.story:
+    # 1) Génération des images par scène (ici en 2 parties)
+    parts = split_story_to_chunks(st.session_state.story, n=2)
+    st.header("🎨 Illustrations magiques de l’histoire")
+    for idx, part in enumerate(parts):
+        # Générer l’image
+        try:
+            prompt = generate_image_prompt(part)
+            image = generate_image_from_prompt(prompt)
+        except RuntimeError as e:
+            st.warning(str(e))
+            continue
+        except Exception as e:
+            st.warning(f"Erreur inattendue lors de la génération d’image : {e}")
+            continue
 
-    # Version traduite si demandée
-    if show_translation and st.session_state.story_translated:
-        st.header(f"📗 Version traduite ({lang_output_label})")
-        story_trad_html = st.session_state.story_translated.replace("\n", "<br>")
+        # Affichage de l’image et du texte de la scène (uniquement dans la langue d’origine)
+        buffered = BytesIO()
+        image.save(buffered, format='PNG')
+        img_str = base64.b64encode(buffered.getvalue()).decode()
+
         st.markdown(f"""
             <div class="parchment-container">
                 <div class="parchment">
-                    {story_trad_html}
+                    <h3>Scène {idx+1}</h3>
+                    <img src="data:image/png;base64,{img_str}" />
+                    <p>{part}</p>
                 </div>
             </div>
         """, unsafe_allow_html=True)
 
-    # Boutons pour écouter et télécharger l’audio
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown(f"### 🔊 Écoute en {lang_input_label}")
-        if st.button(f"▶️ Lancer l’audio ({lang_input_label})"):
-            with st.spinner("🎧 Génération audio..."):
-                st.session_state.audio_input = generate_tts_audio(
-                    st.session_state.story,
-                    lang=lang_input_code
+    # 2) Génération et affichage de l’audio complet dans la langue d’origine
+    st.header("🔊 Audio complet (Langue originale)")
+    if not st.session_state.audio_original:
+        with st.spinner("🎧 Génération audio complet..."):
+            st.session_state.audio_original = generate_tts_audio(st.session_state.story, lang=lang_input_code)
+    if st.session_state.audio_original:
+        st.audio(st.session_state.audio_original, format="audio/mp3")
+        st.download_button(
+            label=download_labels.get(lang_input_code, "⬇️ Télécharger l'audio"),
+            data=st.session_state.audio_original,
+            file_name=f"histoire_complet_{lang_input_code}.mp3",
+            mime="audio/mp3",
+            use_container_width=True
+        )
+
+    # 3) Si traduction activée : afficher audio complet traduit + texte traduit en fin
+    if show_translation and st.session_state.story_translated:
+        st.header("🔊 Audio complet (Version traduite)")
+        if not st.session_state.audio_translated:
+            with st.spinner("🎧 Génération audio traduction..."):
+                st.session_state.audio_translated = generate_tts_audio(
+                    st.session_state.story_translated,
+                    lang=lang_output_code
                 )
-        if st.session_state.audio_input:
-            st.audio(st.session_state.audio_input, format="audio/mp3")
+        if st.session_state.audio_translated:
+            st.audio(st.session_state.audio_translated, format="audio/mp3")
             st.download_button(
-                label=download_labels.get(lang_input_code, "⬇️ Download"),
-                data=st.session_state.audio_input,
-                file_name=f"histoire_{lang_input_code}.mp3",
+                label=download_labels.get(lang_output_code, "⬇️ Télécharger l'audio traduit"),
+                data=st.session_state.audio_translated,
+                file_name=f"histoire_complet_{lang_output_code}.mp3",
                 mime="audio/mp3",
                 use_container_width=True
             )
-    with col2:
-        if show_translation and st.session_state.story_translated:
-            st.markdown(f"### 🔊 Écoute en {lang_output_label}")
-            if st.button(f"▶️ Lancer l’audio ({lang_output_label})"):
-                with st.spinner("🎧 Génération audio..."):
-                    st.session_state.audio_output = generate_tts_audio(
-                        st.session_state.story_translated,
-                        lang=lang_output_code
-                    )
-            if st.session_state.audio_output:
-                st.audio(st.session_state.audio_output, format="audio/mp3")
-                st.download_button(
-                    label=download_labels.get(lang_output_code, "⬇️ Download"),
-                    data=st.session_state.audio_output,
-                    file_name=f"histoire_{lang_output_code}.mp3",
-                    mime="audio/mp3",
-                    use_container_width=True
-                )
 
-    # Illustration et texte dans le parchemin
-    st.header("🎨 Illustrations magiques de l’histoire")
-    if not st.session_state.images:
-        with st.spinner("🖼️ Création des images..."):
-            parts = split_story_to_chunks(st.session_state.story, n=2)
-            for idx, part in enumerate(parts):
-                try:
-                    prompt = generate_image_prompt(part)
-                    image = generate_image_from_prompt(prompt)
-                    st.session_state.images.append((f"Scène {idx+1}", part, image))
-                except RuntimeError as e:
-                    st.warning(str(e))
-                except Exception as e:
-                    st.warning(f"Erreur inattendue lors de la génération d'image : {e}")
-
-    for scene_title, scene_text, img in st.session_state.images:
-        buffered = BytesIO()
-        img.save(buffered, format='PNG')
-        img_str = base64.b64encode(buffered.getvalue()).decode()
-        html = f"""
+        # Affichage du texte complet traduit au bas de la page
+        st.markdown(f"""
             <div class="parchment-container">
                 <div class="parchment">
-                    <h3>{scene_title}</h3>
-                    <img src="data:image/png;base64,{img_str}" />
-                    <p>{scene_text}</p>
+                    <h3>Histoire complète traduite ({lang_output_label})</h3>
+                    <p>{st.session_state.story_translated.replace('\n', '<br>')}</p>
                 </div>
             </div>
-        """
-        st.markdown(html, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
