@@ -263,7 +263,7 @@ def generate_story(keywords: list[str], lang_code: str) -> str:
     prompts = {
         "fr": "Tu es un assistant conteur pour enfants âgés de 1 à 6 ans. Rédige une histoire courte et adaptée avec ces mots-clés : ",
         "en": "You are a storytelling assistant for children aged 1 to 6. Write a short story using the following keywords: ",
-        "es": "Eres un asistente que cuenta cuentos para niños de 1 a 6 años. Escribe una historia corta con estas palabras clave: "
+        "es": "Eres un asistente que cuenta cuentos pour niños de 1 a 6 años. Escribe una historia corta con estas palabras clave: "
     }
     prompt = prompts[lang_code] + ", ".join(keywords)
     response = client.chat.completions.create(
@@ -282,6 +282,15 @@ st.title("📖 Bienvenue dans FeedoDo : l’usine à histoires magiques !")
 
 # Choix de la langue et option de traduction
 show_translation = st.checkbox("🧚‍♀️ Traduire dans une autre langue ?")
+
+# Lorsqu’on décoche la traduction, on supprime les anciens états pour forcer régénération
+if not show_translation:
+    for key in ["story_translated", "audio_translated"]:
+        if key in st.session_state:
+            del st.session_state[key]
+    for key in ["story", "audio_original", "images"]:
+        if key in st.session_state:
+            del st.session_state[key]
 
 if show_translation:
     col1, col2 = st.columns(2)
@@ -303,51 +312,85 @@ else:
 # Saisie des mots-clés
 keywords_input = st.text_input(f"📝 Mots-clés ({lang_input_label}) :")
 
-# Bouton pour générer l’histoire
+# Bouton pour générer l’histoire et barre de chargement
 if st.button("🚀 Générer l’histoire magique"):
     keywords = [k.strip() for k in keywords_input.split(",") if k.strip()]
     if not keywords:
         st.error("⚠️ Veuillez entrer au moins un mot-clé.")
     else:
-        with st.spinner("🧠 Création de l’histoire magique en cours..."):
-            # Génération de l’histoire complète, dans la langue choisie
+        # 1) Génération de l’histoire
+        progress = st.progress(0)
+        step = 0
+
+        with st.spinner("🧠 Génération de l’histoire..."):
             story = generate_story(keywords, lang_input_code)
-            # Traduction complète (si activée)
-            if show_translation:
+        step += 1
+
+        # 2) Traduction complète si demandée
+        if show_translation:
+            with st.spinner("🌍 Traduction de l’histoire..."):
                 story_translated = translate_text(story, lang_input_code, lang_output_code)
-            else:
-                story_translated = None
+            step += 1
+        else:
+            story_translated = None
 
-            # Stockage dans la session
-            st.session_state.story = story
-            st.session_state.story_translated = story_translated
-            st.session_state.audio_original = None
-            st.session_state.audio_translated = None
-            st.session_state.images = []
-        st.success("✅ Histoire générée avec succès !")
+        # On découpe l’histoire (version originale) en 2 parties
+        parts = split_story_to_chunks(story, n=2)
 
-# Une fois l’histoire générée, on affiche les illustrations + description, puis les audios complets
+        # Calcul dynamique du nombre total d’étapes pour la barre de progression
+        total_steps = 1  # histoire
+        if show_translation:
+            total_steps += 1  # traduction
+        total_steps += len(parts)  # chaque image
+        total_steps += 1  # audio original
+        if show_translation:
+            total_steps += 1  # audio traduit
+
+        # Mettre à jour la barre après génération/histoire et traduction
+        progress.progress(int(step * 100 / total_steps))
+
+        # 3) Génération des images pour chaque partie
+        images = []
+        for idx, part in enumerate(parts):
+            with st.spinner(f"🖼️ Génération image Scène {idx+1}..."):
+                prompt = generate_image_prompt(part)
+                image = generate_image_from_prompt(prompt)
+                images.append((part, image))
+            step += 1
+            progress.progress(int(step * 100 / total_steps))
+        st.session_state.images = images
+
+        # 4) Génération de l’audio complet (version originale)
+        with st.spinner("🎧 Génération audio complet (origine)..."):
+            audio_original = generate_tts_audio(story, lang=lang_input_code)
+        step += 1
+        progress.progress(int(step * 100 / total_steps))
+        st.session_state.audio_original = audio_original
+
+        # 5) Génération de l’audio complet traduit si nécessaire
+        if show_translation and story_translated:
+            with st.spinner("🎧 Génération audio complet (traduction)..."):
+                audio_translated = generate_tts_audio(story_translated, lang=lang_output_code)
+            step += 1
+            progress.progress(int(step * 100 / total_steps))
+            st.session_state.audio_translated = audio_translated
+
+        # Stocker l’histoire dans la session
+        st.session_state.story = story
+        st.session_state.story_translated = story_translated
+
+        # Finaliser la barre à 100%
+        progress.progress(100)
+        st.success("✅ Tout a été généré avec succès !")
+
+# Affichage du résultat une fois que tout est en session_state
 if "story" in st.session_state and st.session_state.story:
-    # 1) Génération des images par scène (ici en 2 parties)
-    parts = split_story_to_chunks(st.session_state.story, n=2)
+    # 1) Affichage des scènes illustrées
     st.header("🎨 Illustrations magiques de l’histoire")
-    for idx, part in enumerate(parts):
-        # Générer l’image
-        try:
-            prompt = generate_image_prompt(part)
-            image = generate_image_from_prompt(prompt)
-        except RuntimeError as e:
-            st.warning(str(e))
-            continue
-        except Exception as e:
-            st.warning(f"Erreur inattendue lors de la génération d’image : {e}")
-            continue
-
-        # Affichage de l’image et du texte de la scène (uniquement dans la langue d’origine)
+    for idx, (part, image) in enumerate(st.session_state.images):
         buffered = BytesIO()
         image.save(buffered, format='PNG')
         img_str = base64.b64encode(buffered.getvalue()).decode()
-
         st.markdown(f"""
             <div class="parchment-container">
                 <div class="parchment">
@@ -358,11 +401,8 @@ if "story" in st.session_state and st.session_state.story:
             </div>
         """, unsafe_allow_html=True)
 
-    # 2) Génération et affichage de l’audio complet dans la langue d’origine
+    # 2) Audio complet dans la langue d’origine
     st.header("🔊 Audio complet (Langue originale)")
-    if not st.session_state.audio_original:
-        with st.spinner("🎧 Génération audio complet..."):
-            st.session_state.audio_original = generate_tts_audio(st.session_state.story, lang=lang_input_code)
     if st.session_state.audio_original:
         st.audio(st.session_state.audio_original, format="audio/mp3")
         st.download_button(
@@ -373,15 +413,9 @@ if "story" in st.session_state and st.session_state.story:
             use_container_width=True
         )
 
-    # 3) Si traduction activée : afficher audio complet traduit + texte traduit en fin
-    if show_translation and st.session_state.story_translated:
+    # 3) Audio complet traduit + texte complet traduit (si applicable)
+    if show_translation and "story_translated" in st.session_state and st.session_state.story_translated:
         st.header("🔊 Audio complet (Version traduite)")
-        if not st.session_state.audio_translated:
-            with st.spinner("🎧 Génération audio traduction..."):
-                st.session_state.audio_translated = generate_tts_audio(
-                    st.session_state.story_translated,
-                    lang=lang_output_code
-                )
         if st.session_state.audio_translated:
             st.audio(st.session_state.audio_translated, format="audio/mp3")
             st.download_button(
@@ -391,8 +425,7 @@ if "story" in st.session_state and st.session_state.story:
                 mime="audio/mp3",
                 use_container_width=True
             )
-
-        # Affichage du texte complet traduit au bas de la page
+        # Texte complet traduit en bas de page
         st.markdown(f"""
             <div class="parchment-container">
                 <div class="parchment">
