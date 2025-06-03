@@ -16,9 +16,16 @@ from back_end.image_generator import (
 
 import concurrent.futures
 
-# -------------------------------------------------------------------
+from back_end.ebook_generator import build_epub_from_story
+
+# ────────────────────────────────────────────────────────────────────
+# 0. CONFIGURATION DE LA PAGE : DOIT ÊTRE LA PREMIÈRE COMMANDE STREAMLIT
+# ────────────────────────────────────────────────────────────────────
+st.set_page_config(page_title="FeedoDo - Histoire magique", layout="wide")
+
+# ────────────────────────────────────────────────────────────────────
 # 1. LECTURE ET CONVERSION DE L'IMAGE DE FOND EN BASE64
-# -------------------------------------------------------------------
+# ────────────────────────────────────────────────────────────────────
 BACKGROUND_IMAGE_PATH = "background.png"
 background_base64 = ""
 if os.path.exists(BACKGROUND_IMAGE_PATH):
@@ -26,11 +33,9 @@ if os.path.exists(BACKGROUND_IMAGE_PATH):
         background_bytes = img_file.read()
         background_base64 = base64.b64encode(background_bytes).decode()
 
-# -------------------------------------------------------------------
-# 2. CONFIGURATION DE LA PAGE ET INJECTION DU CSS AVEC LE BACKGROUND
-# -------------------------------------------------------------------
-st.set_page_config(page_title="FeedoDo - Histoire magique", layout="wide")
-
+# ────────────────────────────────────────────────────────────────────
+# 2. INJECTION DU CSS AVEC LE BACKGROUND
+# ────────────────────────────────────────────────────────────────────
 st.markdown(f"""
     <style>
     /* ---------- STYLE GÉNÉRAL DU BACKGROUND ---------- */
@@ -222,9 +227,9 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# -------------------------------------------------------------------
+# ────────────────────────────────────────────────────────────────────
 # 3. CHARGEMENT DES VARIABLES D’ENVIRONNEMENT ET INITIALISATION CLIENT
-# -------------------------------------------------------------------
+# ────────────────────────────────────────────────────────────────────
 load_dotenv()
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
@@ -234,16 +239,16 @@ LANGUAGES = {
     "🇪🇸 Español": "es"
 }
 
-# Texte des boutons téléchargement
+# Texte des boutons de téléchargement audio
 download_labels = {
     "fr": "⬇️ Télécharger l'audio",
     "en": "⬇️ Download audio",
     "es": "⬇️ Descargar audio"
 }
 
-# -------------------------------------------------------------------
+# ────────────────────────────────────────────────────────────────────
 # 4. FONCTION DE TRADUCTION VIA API GOOGLE
-# -------------------------------------------------------------------
+# ────────────────────────────────────────────────────────────────────
 def translate_text(text: str, source_lang: str, target_lang: str) -> str:
     url = "https://translate.googleapis.com/translate_a/single"
     params = {
@@ -258,9 +263,9 @@ def translate_text(text: str, source_lang: str, target_lang: str) -> str:
         return ''.join([part[0] for part in response.json()[0]])
     return "[Échec de la traduction]"
 
-# -------------------------------------------------------------------
+# ────────────────────────────────────────────────────────────────────
 # 5. FONCTION DE GÉNÉRATION D’HISTOIRE VIA MISTRAL
-# -------------------------------------------------------------------
+# ────────────────────────────────────────────────────────────────────
 def generate_story(keywords: list[str], lang_code: str) -> str:
     prompts = {
         "fr": "Tu es un assistant conteur pour enfants âgés de 1 à 6 ans. Rédige une histoire courte et adaptée avec ces mots-clés : ",
@@ -276,23 +281,13 @@ def generate_story(keywords: list[str], lang_code: str) -> str:
     )
     return response.choices[0].message.content
 
-# -------------------------------------------------------------------
+# ────────────────────────────────────────────────────────────────────
 # 6. AFFICHAGE DE L’INTERFACE STREAMLIT
-# -------------------------------------------------------------------
-
+# ────────────────────────────────────────────────────────────────────
 st.title("📖 Bienvenue dans FeedoDo : l’usine à histoires magiques !")
 
 # Choix de la langue et option de traduction
 show_translation = st.checkbox("🧚‍♀️ Traduire dans une autre langue ?")
-
-# Lorsqu’on décoche la traduction, on supprime les anciens états pour forcer régénération
-if not show_translation:
-    for key in ["story_translated", "audio_translated"]:
-        if key in st.session_state:
-            del st.session_state[key]
-    for key in ["story", "audio_original", "images"]:
-        if key in st.session_state:
-            del st.session_state[key]
 
 if show_translation:
     col1, col2 = st.columns(2)
@@ -316,6 +311,13 @@ keywords_input = st.text_input(f"📝 Mots-clés ({lang_input_label}) :")
 
 # Bouton pour générer l’histoire et barre de chargement asynchrone
 if st.button("🚀 Générer l’histoire magique"):
+    # ───────────────────────────────────────────────────────────────
+    # ==> On supprime d’abord tout ce qui pourrait rester d’une ancienne histoire
+    # ───────────────────────────────────────────────────────────────
+    for key in ["story", "story_translated", "audio_original", "audio_translated", "images"]:
+        if key in st.session_state:
+            del st.session_state[key]
+
     keywords = [k.strip() for k in keywords_input.split(",") if k.strip()]
     if not keywords:
         st.error("⚠️ Veuillez entrer au moins un mot-clé.")
@@ -340,7 +342,7 @@ if st.button("🚀 Générer l’histoire magique"):
         # Découper l’histoire en scènes
         parts = split_story_to_chunks(story, n=2)
 
-        # Calcul du nombre total d’étapes pour la barre
+        # Calcul du nombre total d’étapes pour la barre de progression
         total_steps = 1  # génération d’histoire
         if show_translation:
             total_steps += 1  # traduction
@@ -351,14 +353,16 @@ if st.button("🚀 Générer l’histoire magique"):
 
         progress.progress(int(step * 100 / total_steps))
 
-        # 3) Génération des images ET audios en parallèle
+        # 3) Génération des images ET des audios en parallèle
         images = []
         clipdrop_error = False
 
         with concurrent.futures.ThreadPoolExecutor() as executor:
-            # Soumettre toutes les tâches images
-            image_futures = {executor.submit(generate_image_from_prompt, generate_image_prompt(part)): part
-                             for part in parts}
+            # Soumettre toutes les tâches de génération d’images
+            image_futures = {
+                executor.submit(generate_image_from_prompt, generate_image_prompt(part)): part
+                for part in parts
+            }
 
             # Soumettre génération audio original
             audio_original_future = executor.submit(generate_tts_audio, story, lang_input_code)
@@ -401,7 +405,7 @@ if st.button("🚀 Générer l’histoire magique"):
                 step += 1
                 progress.progress(int(step * 100 / total_steps))
 
-        # Stocker l’histoire dans la session
+        # Stocker l’histoire et la version traduite dans la session
         st.session_state.story = story
         st.session_state.story_translated = story_translated
 
@@ -409,7 +413,9 @@ if st.button("🚀 Générer l’histoire magique"):
         progress.progress(100)
         st.success("✅ Tout a été généré avec succès !")
 
-# Affichage du résultat une fois que tout est en session_state
+# ────────────────────────────────────────────────────────────────────
+# 7. AFFICHAGE DU RÉSULTAT UNE FOIS GÉNÉRÉ
+# ────────────────────────────────────────────────────────────────────
 if "story" in st.session_state and st.session_state.story:
     # 1) Afficher les scènes illustrées
     st.header("🎨 Illustrations magiques de l’histoire")
@@ -442,7 +448,7 @@ if "story" in st.session_state and st.session_state.story:
             use_container_width=True
         )
 
-    # 3) Afficher audio complet traduit + texte traduit
+    # 3) Afficher audio complet traduit + texte traduit (si demandé)
     if show_translation and "story_translated" in st.session_state and st.session_state.story_translated:
         st.header("🔊 Audio complet (Version traduite)")
         if st.session_state.audio_translated:
@@ -462,3 +468,31 @@ if "story" in st.session_state and st.session_state.story:
                 </div>
             </div>
         """, unsafe_allow_html=True)
+
+# ────────────────────────────────────────────────────────────────────
+# 8. BOUTON “TÉLÉCHARGER L’HISTOIRE” EN EPUB UNIQUEMENT
+# ────────────────────────────────────────────────────────────────────
+if "story" in st.session_state and st.session_state.story:
+    st.header("📚 Télécharger l’histoire complète (EPUB uniquement)")
+
+    if st.button("⬇️ Télécharger en EPUB"):
+        # Préparer les métadonnées de l’ePub
+        metadata = {
+            "title": "Histoire Magique Générée",
+            "language": lang_input_code,
+            "author": "FeedoDo",
+            "description": f"Histoire générée via FeedoDo le {__import__('datetime').datetime.now().date()}"
+        }
+
+        # Générer l’EPUB en mémoire
+        images = st.session_state.images
+        epub_buffer = build_epub_from_story(st.session_state.story, images, metadata)
+
+        # Proposer le téléchargement direct du .epub
+        st.download_button(
+            label="Télécharger l’ePub",
+            data=epub_buffer.getvalue(),
+            file_name="histoire_magique.epub",
+            mime="application/epub+zip",
+            use_container_width=True
+        )
