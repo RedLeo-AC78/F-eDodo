@@ -351,10 +351,25 @@ if st.button("🚀 Générer l’histoire magique"):
 
         # 3) Génération des images pour chaque partie
         images = []
+        clipdrop_error = False
         for idx, part in enumerate(parts):
+            if clipdrop_error:
+                break
             with st.spinner(f"🖼️ Génération image Scène {idx+1}..."):
-                prompt = generate_image_prompt(part)
-                image = generate_image_from_prompt(prompt)
+                try:
+                    prompt = generate_image_prompt(part)
+                    image = generate_image_from_prompt(prompt)
+                except RuntimeError as e:
+                    # Si ClipDrop renvoie un code 402 (crédits épuisés), on affiche un message et on sort de la boucle
+                    if "402" in str(e):
+                        st.error("❌ Crédits ClipDrop insuffisants pour générer les images. "
+                                 "Vous pouvez réessayer plus tard ou vérifier votre clé API.")
+                        clipdrop_error = True
+                        break
+                    else:
+                        st.warning(f"⚠️ {e}")
+                        clipdrop_error = True
+                        break
                 images.append((part, image))
             step += 1
             progress.progress(int(step * 100 / total_steps))
@@ -387,19 +402,22 @@ if st.button("🚀 Générer l’histoire magique"):
 if "story" in st.session_state and st.session_state.story:
     # 1) Affichage des scènes illustrées
     st.header("🎨 Illustrations magiques de l’histoire")
-    for idx, (part, image) in enumerate(st.session_state.images):
-        buffered = BytesIO()
-        image.save(buffered, format='PNG')
-        img_str = base64.b64encode(buffered.getvalue()).decode()
-        st.markdown(f"""
-            <div class="parchment-container">
-                <div class="parchment">
-                    <h3>Scène {idx+1}</h3>
-                    <img src="data:image/png;base64,{img_str}" />
-                    <p>{part}</p>
+    if st.session_state.images:
+        for idx, (part, image) in enumerate(st.session_state.images):
+            buffered = BytesIO()
+            image.save(buffered, format='PNG')
+            img_str = base64.b64encode(buffered.getvalue()).decode()
+            st.markdown(f"""
+                <div class="parchment-container">
+                    <div class="parchment">
+                        <h3>Scène {idx+1}</h3>
+                        <img src="data:image/png;base64,{img_str}" />
+                        <p>{part}</p>
+                    </div>
                 </div>
-            </div>
-        """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
+    else:
+        st.info("Aucune illustration disponible (crédits ClipDrop épuisés ou erreur lors de la génération).")
 
     # 2) Audio complet dans la langue d’origine
     st.header("🔊 Audio complet (Langue originale)")
