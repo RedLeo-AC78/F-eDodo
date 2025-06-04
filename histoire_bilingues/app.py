@@ -15,212 +15,83 @@ from back_end.image_generator import (
 )
 
 import concurrent.futures
+import time
+from streamlit_lottie import st_lottie
 
-# -------------------------------------------------------------------
-# 1. LECTURE ET CONVERSION DE L'IMAGE DE FOND EN BASE64
-# -------------------------------------------------------------------
-BACKGROUND_IMAGE_PATH = "background.png"
-background_base64 = ""
-if os.path.exists(BACKGROUND_IMAGE_PATH):
-    with open(BACKGROUND_IMAGE_PATH, "rb") as img_file:
-        background_bytes = img_file.read()
-        background_base64 = base64.b64encode(background_bytes).decode()
-
-# -------------------------------------------------------------------
-# 2. CONFIGURATION DE LA PAGE ET INJECTION DU CSS AVEC LE BACKGROUND
-# -------------------------------------------------------------------
 st.set_page_config(page_title="FeedoDo - Histoire magique", layout="wide")
 
-st.markdown(f"""
-    <style>
-    /* ---------- STYLE GÉNÉRAL DU BACKGROUND ---------- */
-    body {{
-        background-color: #FFF8F0;  /* beige très clair si pas d'image */
-        background-image: url("data:image/png;base64,{background_base64}") !important;
-        background-size: cover;
-        background-position: center;
-        background-repeat: no-repeat;
-    }}
+# --- Intro magique avec bouton ---
+# --- Intro avec GIF magique et bouton ---
+# --- Splash screen Fée Dodo (5 secondes, automatique) ---
+GIF_PATH = "Intro3.gif"
 
-    /* ---------- CONTENEUR PRINCIPAL ---------- */
-    .block-container {{
-        padding-top: 2rem;
-        padding-bottom: 2rem;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        max-width: 900px;
-        margin: auto;
-    }}
+if "splash_shown" not in st.session_state:
+    st.session_state.splash_shown = False
 
-    /* ---------- TITRES : police Comic Sans MS, couleur violette ---------- */
-    h1, h2, h3 {{
-        font-family: 'Comic Sans MS', cursive, sans-serif;
-        color: #5D3FD3;
-        text-align: center;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
-    }}
+if not st.session_state.splash_shown:
+    with open(GIF_PATH, "rb") as f:
+        gif_base64 = base64.b64encode(f.read()).decode()
 
-    /* ---------- PARCHEMIN (CONTE) ---------- */
-    .parchment-container {{
-        display: flex;
-        justify-content: center;
-        width: 100%;
-        margin-bottom: 2rem;
-    }}
-    .parchment {{
-        background-color: #FDF0D5;          /* beige doux */
-        color: #2B2B2B;                     /* texte anthracite */
-        border: 8px solid #D2A679;         /* bord brun clair */
-        border-radius: 20px;
-        padding: 20px 30px;
-        max-width: 800px;
-        box-shadow: 0 6px 14px rgba(0,0,0,0.1);
-        font-size: 18px;
-        line-height: 1.6;
-    }}
-    .parchment img {{
-        max-width: 100%;
-        height: auto;
-        display: block;
-        margin: 1rem auto;
-        border-radius: 12px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    }}
-    .parchment h3 {{
-        margin-bottom: 0.8rem;
-        color: #5D3FD3;
-        font-family: 'Comic Sans MS', cursive, sans-serif;
-    }}
-    .parchment p {{
-        text-align: center;
-        margin-top: 1rem;
-    }}
-
-    /* ---------- BOUTONS (stButton) ---------- */
-    .stButton > button {{
-        font-family: 'Comic Sans MS', cursive, sans-serif;
-        background: linear-gradient(135deg, #FFD966 0%, #FFB6C1 100%); /* dégradé jaune → rose */
-        color: #FFFFFF;
-        font-size: 20px;
-        padding: 0.8em 1.8em;
-        border-radius: 20px;
-        border: 2px solid #FF8C00;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        transition: transform 0.2s, box-shadow 0.2s;
-        display: block;
-        margin: 1rem auto;
-    }}
-    .stButton > button:hover {{
-        transform: translateY(-2px);
-        box-shadow: 0 6px 14px rgba(0,0,0,0.2);
-        background: linear-gradient(135deg, #FFB347 0%, #FF69B4 100%);
-    }}
-
-    /* ---------- CHAMP DE SAISIE (stTextInput) ---------- */
-    .stTextInput > div > input {{
-        font-size: 20px;
-        background-color: #FFFFFF;    /* fond blanc pour mieux voir le texte */
-        border: 1px solid #FFD966;    /* bordure pastel légère */
-        border-radius: 8px;
-        padding: 0.6em 1em;
-        color: #333333;
-    }}
-    .stTextInput > label {{
-        font-family: 'Comic Sans MS', cursive, sans-serif;
-        font-size: 18px;
-        color: #5D3FD3;
-    }}
-
-    /* ---------- SELECTBOX (menu déroulant) ---------- */
-    .stSelectbox > div > div > div {{
-        font-size: 18px;
-        background-color: #FFFFFF;    /* fond blanc */
-        border: 1px solid #FFD966;    /* bordure pastel légère */
-        border-radius: 8px;
-        padding: 0.5em 0.8em;
-        color: #333333;
-        height: 2.5em;                /* hauteur fixe pour centrer verticalement */
-        display: flex;
-        align-items: center;          /* aligne le texte verticalement */
-    }}
-    .stSelectbox > label {{
-        font-family: 'Comic Sans MS', cursive, sans-serif;
-        font-size: 18px;
-        color: #5D3FD3;
-        margin-bottom: 0.3em;
-    }}
-    .stSelectbox > div > div > div svg {{
-        fill: #5D3FD3 !important;     /* couleur du petit chevron */
-    }}
-
-    /* ---------- CHECKBOX ---------- */
-    .stCheckbox > label {{
-        font-family: 'Comic Sans MS', cursive, sans-serif;
-        font-size: 18px;
-        color: #5D3FD3;
-        margin-top: 0.4em;            /* décale un peu vers le bas pour aligner avec select */
-    }}
-
-    /* ---------- BOUTON DE TÉLÉCHARGEMENT AUDIO ---------- */
-    .stDownloadButton > button {{
-        font-family: 'Comic Sans MS', cursive, sans-serif;
-        background: linear-gradient(135deg, #87CEFA 0%, #98FB98 100%); /* bleu ciel → vert */
-        color: #FFFFFF;
-        font-size: 18px;
-        padding: 0.6em 1.2em;
-        border-radius: 16px;
-        border: 2px solid #00BFFF;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        transition: transform 0.2s;
-        margin-top: 0.5em;
-    }}
-    .stDownloadButton > button:hover {{
-        transform: translateY(-1px);
-        box-shadow: 0 6px 12px rgba(0,0,0,0.15);
-        background: linear-gradient(135deg, #1E90FF 0%, #00FA9A 100%);
-    }}
-
-    /* ---------- LECTEUR AUDIO ---------- */
-    .stAudio {{
-        margin-top: 0.5em;
-        margin-bottom: 1.5em;
-        border: 2px solid #FFD966;
-        border-radius: 12px;
-        background-color: #FFF8DC;
-    }}
-
-    /* ---------- IMAGES GÉNÉRÉES ---------- */
-    img {{
-        border-radius: 16px !important;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
-    }}
-
-    /* ---------- RÉPONSIVE ---------- */
-    @media (max-width: 768px) {{
-        .block-container {{
-            padding: 1rem;
+    st.markdown(f"""
+        <style>
+        body {{
+            background-color: #FFF8F0 !important;
         }}
-        .parchment {{
-            padding: 15px 20px;
-            font-size: 16px;
+        #splash {{
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #FFF8F0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            opacity: 1;
+            transition: opacity 2s ease;
         }}
-        .stButton > button,
-        .stDownloadButton > button {{
-            font-size: 18px;
-            padding: 0.7em 1.4em;
+        #splash.fade-out {{
+            opacity: 0;
+            pointer-events: none;
         }}
-        .stTextInput > div > input {{
-            font-size: 18px;
+        #splash h1 {{
+            font-family: 'Comic Sans MS', cursive;
+            color: #D8652C;
+            font-size: 2rem;
+            margin-top: 1.5rem;
         }}
-        .stSelectbox > div > div > div {{
-            font-size: 16px;
-            height: 2.2em;
-            padding: 0.4em 0.6em;
+        #splash p {{
+            font-family: 'Comic Sans MS', cursive;
+            color: #444;
+            font-size: 1rem;
+            margin-top: 0.5rem;
         }}
-    }}
-    </style>
-""", unsafe_allow_html=True)
+        </style>
+
+        <div id="splash">
+            <img src="data:image/gif;base64,{gif_base64}" width="300"/>
+            <h1>✨ Bienvenue dans Fée Dodo ✨</h1>
+            <p>Préparation de votre monde magique...</p>
+        </div>
+
+        <script>
+        setTimeout(function() {{
+            document.getElementById('splash').classList.add('fade-out');
+        }}, 5000);
+        setTimeout(function() {{
+            window.location.reload();
+        }}, 7000);
+        </script>
+    """, unsafe_allow_html=True)
+   
+
+    # Attente réelle côté serveur (attention en production)
+    time.sleep(3.92)
+    st.session_state.splash_shown = True
+    st.rerun()
+
 
 # -------------------------------------------------------------------
 # 3. CHARGEMENT DES VARIABLES D’ENVIRONNEMENT ET INITIALISATION CLIENT
