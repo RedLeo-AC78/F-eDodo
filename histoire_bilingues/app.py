@@ -15,6 +15,217 @@ from back_end.image_generator import (
 )
 
 import concurrent.futures
+
+from back_end.ebook_generator import build_epub_from_story
+
+# ────────────────────────────────────────────────────────────────────
+# 0. CONFIGURATION DE LA PAGE : DOIT ÊTRE LA PREMIÈRE COMMANDE STREAMLIT
+# ────────────────────────────────────────────────────────────────────
+st.set_page_config(page_title="FeedoDo - Histoire magique", layout="wide")
+
+# ────────────────────────────────────────────────────────────────────
+# 1. LECTURE ET CONVERSION DE L'IMAGE DE FOND EN BASE64
+# ────────────────────────────────────────────────────────────────────
+BACKGROUND_IMAGE_PATH = "background.png"
+background_base64 = ""
+if os.path.exists(BACKGROUND_IMAGE_PATH):
+    with open(BACKGROUND_IMAGE_PATH, "rb") as img_file:
+        background_bytes = img_file.read()
+        background_base64 = base64.b64encode(background_bytes).decode()
+
+# ────────────────────────────────────────────────────────────────────
+# 2. INJECTION DU CSS AVEC LE BACKGROUND
+# ────────────────────────────────────────────────────────────────────
+st.markdown(f"""
+    <style>
+    /* ---------- STYLE GÉNÉRAL DU BACKGROUND ---------- */
+    body {{
+        background-color: #FFF8F0;  /* beige très clair si pas d'image */
+        background-image: url("data:image/png;base64,{background_base64}") !important;
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+    }}
+
+    /* ---------- CONTENEUR PRINCIPAL ---------- */
+    .block-container {{
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        max-width: 900px;
+        margin: auto;
+    }}
+
+    /* ---------- TITRES : police Comic Sans MS, couleur violette ---------- */
+    h1, h2, h3 {{
+        font-family: 'Comic Sans MS', cursive, sans-serif;
+        color: #5D3FD3;
+        text-align: center;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+    }}
+
+    /* ---------- PARCHEMIN (CONTE) ---------- */
+    .parchment-container {{
+        display: flex;
+        justify-content: center;
+        width: 100%;
+        margin-bottom: 2rem;
+    }}
+    .parchment {{
+        background-color: #FDF0D5;          /* beige doux */
+        color: #2B2B2B;                     /* texte anthracite */
+        border: 8px solid #D2A679;         /* bord brun clair */
+        border-radius: 20px;
+        padding: 20px 30px;
+        max-width: 800px;
+        box-shadow: 0 6px 14px rgba(0,0,0,0.1);
+        font-size: 18px;
+        line-height: 1.6;
+    }}
+    .parchment img {{
+        max-width: 100%;
+        height: auto;
+        display: block;
+        margin: 1rem auto;
+        border-radius: 12px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }}
+    .parchment h3 {{
+        margin-bottom: 0.8rem;
+        color: #5D3FD3;
+        font-family: 'Comic Sans MS', cursive, sans-serif;
+    }}
+    .parchment p {{
+        text-align: center;
+        margin-top: 1rem;
+    }}
+
+    /* ---------- BOUTONS (stButton) ---------- */
+    .stButton > button {{
+        font-family: 'Comic Sans MS', cursive, sans-serif;
+        background: linear-gradient(135deg, #FFD966 0%, #FFB6C1 100%); /* dégradé jaune → rose */
+        color: #FFFFFF;
+        font-size: 20px;
+        padding: 0.8em 1.8em;
+        border-radius: 20px;
+        border: 2px solid #FF8C00;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        transition: transform 0.2s, box-shadow 0.2s;
+        display: block;
+        margin: 1rem auto;
+    }}
+    .stButton > button:hover {{
+        transform: translateY(-2px);
+        box-shadow: 0 6px 14px rgba(0,0,0,0.2);
+        background: linear-gradient(135deg, #FFB347 0%, #FF69B4 100%);
+    }}
+
+    /* ---------- CHAMP DE SAISIE (stTextInput) ---------- */
+    .stTextInput > div > input {{
+        font-size: 20px;
+        background-color: #FFFFFF;    /* fond blanc pour mieux voir le texte */
+        border: 1px solid #FFD966;    /* bordure pastel légère */
+        border-radius: 8px;
+        padding: 0.6em 1em;
+        color: #333333;
+    }}
+    .stTextInput > label {{
+        font-family: 'Comic Sans MS', cursive, sans-serif;
+        font-size: 18px;
+        color: #5D3FD3;
+    }}
+
+    /* ---------- SELECTBOX (menu déroulant) ---------- */
+    .stSelectbox > div > div > div {{
+        font-size: 18px;
+        background-color: #FFFFFF;    /* fond blanc */
+        border: 1px solid #FFD966;    /* bordure pastel légère */
+        border-radius: 8px;
+        padding: 0.5em 0.8em;
+        color: #333333;
+        height: 2.5em;                /* hauteur fixe pour centrer verticalement */
+        display: flex;
+        align-items: center;          /* aligne le texte verticalement */
+    }}
+    .stSelectbox > label {{
+        font-family: 'Comic Sans MS', cursive, sans-serif;
+        font-size: 18px;
+        color: #5D3FD3;
+        margin-bottom: 0.3em;
+    }}
+    .stSelectbox > div > div > div svg {{
+        fill: #5D3FD3 !important;     /* couleur du petit chevron */
+    }}
+
+    /* ---------- CHECKBOX ---------- */
+    .stCheckbox > label {{
+        font-family: 'Comic Sans MS', cursive, sans-serif;
+        font-size: 18px;
+        color: #5D3FD3;
+        margin-top: 0.4em;            /* décale un peu vers le bas pour aligner avec select */
+    }}
+
+    /* ---------- BOUTON DE TÉLÉCHARGEMENT AUDIO ---------- */
+    .stDownloadButton > button {{
+        font-family: 'Comic Sans MS', cursive, sans-serif;
+        background: linear-gradient(135deg, #87CEFA 0%, #98FB98 100%); /* bleu ciel → vert */
+        color: #FFFFFF;
+        font-size: 18px;
+        padding: 0.6em 1.2em;
+        border-radius: 16px;
+        border: 2px solid #00BFFF;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        transition: transform 0.2s;
+        margin-top: 0.5em;
+    }}
+    .stDownloadButton > button:hover {{
+        transform: translateY(-1px);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        background: linear-gradient(135deg, #1E90FF 0%, #00FA9A 100%);
+    }}
+
+    /* ---------- LECTEUR AUDIO ---------- */
+    .stAudio {{
+        margin-top: 0.5em;
+        margin-bottom: 1.5em;
+        border: 2px solid #FFD966;
+        border-radius: 12px;
+        background-color: #FFF8DC;
+    }}
+
+    /* ---------- IMAGES GÉNÉRÉES ---------- */
+    img {{
+        border-radius: 16px !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+    }}
+
+    /* ---------- RÉPONSIVE ---------- */
+    @media (max-width: 768px) {{
+        .block-container {{
+            padding: 1rem;
+        }}
+        .parchment {{
+            padding: 15px 20px;
+            font-size: 16px;
+        }}
+        .stButton > button,
+        .stDownloadButton > button {{
+            font-size: 18px;
+            padding: 0.7em 1.4em;
+        }}
+        .stTextInput > div > input {{
+            font-size: 18px;
+        }}
+        .stSelectbox > div > div > div {{
+            font-size: 16px;
+            height: 2.2em;
+            padding: 0.4em 0.6em;
+        }}
+    }}
+    </style>
+""", unsafe_allow_html=True)
 import time
 from streamlit_lottie import st_lottie
 
@@ -93,9 +304,9 @@ if not st.session_state.splash_shown:
     st.rerun()
 
 
-# -------------------------------------------------------------------
+# ────────────────────────────────────────────────────────────────────
 # 3. CHARGEMENT DES VARIABLES D’ENVIRONNEMENT ET INITIALISATION CLIENT
-# -------------------------------------------------------------------
+# ────────────────────────────────────────────────────────────────────
 load_dotenv()
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
@@ -105,16 +316,16 @@ LANGUAGES = {
     "🇪🇸 Español": "es"
 }
 
-# Texte des boutons téléchargement
+# Texte des boutons de téléchargement audio
 download_labels = {
     "fr": "⬇️ Télécharger l'audio",
     "en": "⬇️ Download audio",
     "es": "⬇️ Descargar audio"
 }
 
-# -------------------------------------------------------------------
+# ────────────────────────────────────────────────────────────────────
 # 4. FONCTION DE TRADUCTION VIA API GOOGLE
-# -------------------------------------------------------------------
+# ────────────────────────────────────────────────────────────────────
 def translate_text(text: str, source_lang: str, target_lang: str) -> str:
     url = "https://translate.googleapis.com/translate_a/single"
     params = {
@@ -129,9 +340,9 @@ def translate_text(text: str, source_lang: str, target_lang: str) -> str:
         return ''.join([part[0] for part in response.json()[0]])
     return "[Échec de la traduction]"
 
-# -------------------------------------------------------------------
+# ────────────────────────────────────────────────────────────────────
 # 5. FONCTION DE GÉNÉRATION D’HISTOIRE VIA MISTRAL
-# -------------------------------------------------------------------
+# ────────────────────────────────────────────────────────────────────
 def generate_story(keywords: list[str], lang_code: str) -> str:
     prompts = {
         "fr": "Tu es un assistant conteur pour enfants âgés de 1 à 6 ans. Rédige une histoire courte et adaptée avec ces mots-clés : ",
@@ -147,23 +358,13 @@ def generate_story(keywords: list[str], lang_code: str) -> str:
     )
     return response.choices[0].message.content
 
-# -------------------------------------------------------------------
+# ────────────────────────────────────────────────────────────────────
 # 6. AFFICHAGE DE L’INTERFACE STREAMLIT
-# -------------------------------------------------------------------
-
+# ────────────────────────────────────────────────────────────────────
 st.title("📖 Bienvenue dans FeedoDo : l’usine à histoires magiques !")
 
 # Choix de la langue et option de traduction
 show_translation = st.checkbox("🧚‍♀️ Traduire dans une autre langue ?")
-
-# Lorsqu’on décoche la traduction, on supprime les anciens états pour forcer régénération
-if not show_translation:
-    for key in ["story_translated", "audio_translated"]:
-        if key in st.session_state:
-            del st.session_state[key]
-    for key in ["story", "audio_original", "images"]:
-        if key in st.session_state:
-            del st.session_state[key]
 
 if show_translation:
     col1, col2 = st.columns(2)
@@ -187,6 +388,13 @@ keywords_input = st.text_input(f"📝 Mots-clés ({lang_input_label}) :")
 
 # Bouton pour générer l’histoire et barre de chargement asynchrone
 if st.button("🚀 Générer l’histoire magique"):
+    # ───────────────────────────────────────────────────────────────
+    # ==> On supprime d’abord tout ce qui pourrait rester d’une ancienne histoire
+    # ───────────────────────────────────────────────────────────────
+    for key in ["story", "story_translated", "audio_original", "audio_translated", "images"]:
+        if key in st.session_state:
+            del st.session_state[key]
+
     keywords = [k.strip() for k in keywords_input.split(",") if k.strip()]
     if not keywords:
         st.error("⚠️ Veuillez entrer au moins un mot-clé.")
@@ -211,7 +419,7 @@ if st.button("🚀 Générer l’histoire magique"):
         # Découper l’histoire en scènes
         parts = split_story_to_chunks(story, n=2)
 
-        # Calcul du nombre total d’étapes pour la barre
+        # Calcul du nombre total d’étapes pour la barre de progression
         total_steps = 1  # génération d’histoire
         if show_translation:
             total_steps += 1  # traduction
@@ -222,14 +430,16 @@ if st.button("🚀 Générer l’histoire magique"):
 
         progress.progress(int(step * 100 / total_steps))
 
-        # 3) Génération des images ET audios en parallèle
+        # 3) Génération des images ET des audios en parallèle
         images = []
         clipdrop_error = False
 
         with concurrent.futures.ThreadPoolExecutor() as executor:
-            # Soumettre toutes les tâches images
-            image_futures = {executor.submit(generate_image_from_prompt, generate_image_prompt(part)): part
-                             for part in parts}
+            # Soumettre toutes les tâches de génération d’images
+            image_futures = {
+                executor.submit(generate_image_from_prompt, generate_image_prompt(part)): part
+                for part in parts
+            }
 
             # Soumettre génération audio original
             audio_original_future = executor.submit(generate_tts_audio, story, lang_input_code)
@@ -272,7 +482,7 @@ if st.button("🚀 Générer l’histoire magique"):
                 step += 1
                 progress.progress(int(step * 100 / total_steps))
 
-        # Stocker l’histoire dans la session
+        # Stocker l’histoire et la version traduite dans la session
         st.session_state.story = story
         st.session_state.story_translated = story_translated
 
@@ -280,7 +490,9 @@ if st.button("🚀 Générer l’histoire magique"):
         progress.progress(100)
         st.success("✅ Tout a été généré avec succès !")
 
-# Affichage du résultat une fois que tout est en session_state
+# ────────────────────────────────────────────────────────────────────
+# 7. AFFICHAGE DU RÉSULTAT UNE FOIS GÉNÉRÉ
+# ────────────────────────────────────────────────────────────────────
 if "story" in st.session_state and st.session_state.story:
     # 1) Afficher les scènes illustrées
     st.header("🎨 Illustrations magiques de l’histoire")
@@ -313,7 +525,7 @@ if "story" in st.session_state and st.session_state.story:
             use_container_width=True
         )
 
-    # 3) Afficher audio complet traduit + texte traduit
+    # 3) Afficher audio complet traduit + texte traduit (si demandé)
     if show_translation and "story_translated" in st.session_state and st.session_state.story_translated:
         st.header("🔊 Audio complet (Version traduite)")
         if st.session_state.audio_translated:
@@ -333,3 +545,31 @@ if "story" in st.session_state and st.session_state.story:
                 </div>
             </div>
         """, unsafe_allow_html=True)
+
+# ────────────────────────────────────────────────────────────────────
+# 8. BOUTON “TÉLÉCHARGER L’HISTOIRE” EN EPUB UNIQUEMENT
+# ────────────────────────────────────────────────────────────────────
+if "story" in st.session_state and st.session_state.story:
+    st.header("📚 Télécharger l’histoire complète (EPUB uniquement)")
+
+    if st.button("⬇️ Télécharger en EPUB"):
+        # Préparer les métadonnées de l’ePub
+        metadata = {
+            "title": "Histoire Magique Générée",
+            "language": lang_input_code,
+            "author": "FeedoDo",
+            "description": f"Histoire générée via FeedoDo le {__import__('datetime').datetime.now().date()}"
+        }
+
+        # Générer l’EPUB en mémoire
+        images = st.session_state.images
+        epub_buffer = build_epub_from_story(st.session_state.story, images, metadata)
+
+        # Proposer le téléchargement direct du .epub
+        st.download_button(
+            label="Télécharger l’ePub",
+            data=epub_buffer.getvalue(),
+            file_name="histoire_magique.epub",
+            mime="application/epub+zip",
+            use_container_width=True
+        )
