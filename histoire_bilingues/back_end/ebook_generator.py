@@ -1,5 +1,6 @@
 # back_end/ebook_generator.py
 
+import PIL
 from ebooklib import epub
 from io import BytesIO
 

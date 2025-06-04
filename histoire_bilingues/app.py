@@ -18,10 +18,87 @@ import concurrent.futures
 
 from back_end.ebook_generator import build_epub_from_story
 
+import time
+from streamlit_lottie import st_lottie
+
+st.set_page_config(page_title="FeedoDo - Histoire magique", layout="wide")
+
+# --- Intro magique avec bouton ---
+# --- Intro avec GIF magique et bouton ---
+# --- Splash screen Fée Dodo (5 secondes, automatique) ---
+GIF_PATH = "Intro3.gif"
+
+if "splash_shown" not in st.session_state:
+    st.session_state.splash_shown = False
+
+if not st.session_state.splash_shown:
+    with open(GIF_PATH, "rb") as f:
+        gif_base64 = base64.b64encode(f.read()).decode()
+
+    st.markdown(f"""
+        <style>
+        body {{
+            background-color: #FFF8F0 !important;
+        }}
+        #splash {{
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #FFF8F0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            opacity: 1;
+            transition: opacity 2s ease;
+        }}
+        #splash.fade-out {{
+            opacity: 0;
+            pointer-events: none;
+        }}
+        #splash h1 {{
+            font-family: 'Comic Sans MS', cursive;
+            color: #D8652C;
+            font-size: 2rem;
+            margin-top: 1.5rem;
+        }}
+        #splash p {{
+            font-family: 'Comic Sans MS', cursive;
+            color: #444;
+            font-size: 1rem;
+            margin-top: 0.5rem;
+        }}
+        </style>
+
+        <div id="splash">
+            <img src="data:image/gif;base64,{gif_base64}" width="300"/>
+            <h1>✨ Bienvenue dans Fée Dodo ✨</h1>
+            <p>Préparation de votre monde magique...</p>
+        </div>
+
+        <script>
+        setTimeout(function() {{
+            document.getElementById('splash').classList.add('fade-out');
+        }}, 5000);
+        setTimeout(function() {{
+            window.location.reload();
+        }}, 7000);
+        </script>
+    """, unsafe_allow_html=True)
+   
+
+    # Attente réelle côté serveur (attention en production)
+    time.sleep(3.92)
+    st.session_state.splash_shown = True
+    st.rerun()
+
 # ────────────────────────────────────────────────────────────────────
 # 0. CONFIGURATION DE LA PAGE : DOIT ÊTRE LA PREMIÈRE COMMANDE STREAMLIT
 # ────────────────────────────────────────────────────────────────────
-st.set_page_config(page_title="FeedoDo - Histoire magique", layout="wide")
+# st.set_page_config(page_title="FeedoDo - Histoire magique", layout="wide")
 
 # ────────────────────────────────────────────────────────────────────
 # 1. LECTURE ET CONVERSION DE L'IMAGE DE FOND EN BASE64
@@ -226,82 +303,7 @@ st.markdown(f"""
     }}
     </style>
 """, unsafe_allow_html=True)
-import time
-from streamlit_lottie import st_lottie
 
-st.set_page_config(page_title="FeedoDo - Histoire magique", layout="wide")
-
-# --- Intro magique avec bouton ---
-# --- Intro avec GIF magique et bouton ---
-# --- Splash screen Fée Dodo (5 secondes, automatique) ---
-GIF_PATH = "Intro3.gif"
-
-if "splash_shown" not in st.session_state:
-    st.session_state.splash_shown = False
-
-if not st.session_state.splash_shown:
-    with open(GIF_PATH, "rb") as f:
-        gif_base64 = base64.b64encode(f.read()).decode()
-
-    st.markdown(f"""
-        <style>
-        body {{
-            background-color: #FFF8F0 !important;
-        }}
-        #splash {{
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background-color: #FFF8F0;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-            opacity: 1;
-            transition: opacity 2s ease;
-        }}
-        #splash.fade-out {{
-            opacity: 0;
-            pointer-events: none;
-        }}
-        #splash h1 {{
-            font-family: 'Comic Sans MS', cursive;
-            color: #D8652C;
-            font-size: 2rem;
-            margin-top: 1.5rem;
-        }}
-        #splash p {{
-            font-family: 'Comic Sans MS', cursive;
-            color: #444;
-            font-size: 1rem;
-            margin-top: 0.5rem;
-        }}
-        </style>
-
-        <div id="splash">
-            <img src="data:image/gif;base64,{gif_base64}" width="300"/>
-            <h1>✨ Bienvenue dans Fée Dodo ✨</h1>
-            <p>Préparation de votre monde magique...</p>
-        </div>
-
-        <script>
-        setTimeout(function() {{
-            document.getElementById('splash').classList.add('fade-out');
-        }}, 5000);
-        setTimeout(function() {{
-            window.location.reload();
-        }}, 7000);
-        </script>
-    """, unsafe_allow_html=True)
-   
-
-    # Attente réelle côté serveur (attention en production)
-    time.sleep(3.92)
-    st.session_state.splash_shown = True
-    st.rerun()
 
 
 # ────────────────────────────────────────────────────────────────────
