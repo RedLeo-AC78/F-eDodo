@@ -19,7 +19,6 @@ import concurrent.futures
 from back_end.ebook_generator import build_epub_from_story
 
 import time
-from streamlit_lottie import st_lottie
 
 st.set_page_config(page_title="FeedoDo - Histoire magique", layout="wide")
 
